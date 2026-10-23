@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ポートフォリオ将来シミュレータ v15（期間制約診断版）</title>
+<style>
+:root{--bg:#f4f6fa;--card:#fff;--ink:#172033;--muted:#667085;--line:#e2e7ef;--accent:#2457d6;--accent2:#0f8b8d;--warn:#a64b00;--good:#087443}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Meiryo,sans-serif;line-height:1.5}
+header{background:#111d37;color:#fff;padding:24px 18px}header .inner,main{max-width:1180px;margin:auto}h1{font-size:clamp(22px,4vw,32px);margin:0 0 6px}header p{margin:0;color:#d8e1f4}.pill{display:inline-block;border:1px solid #52617d;border-radius:999px;padding:3px 9px;font-size:12px;margin-top:10px}
+main{padding:18px;display:grid;gap:16px}.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;box-shadow:0 2px 8px #13244808}
+h2{font-size:18px;margin:0 0 12px}h3{font-size:15px;margin:0 0 8px}.muted{color:var(--muted);font-size:13px}.notice{border-left:4px solid var(--accent);background:#eef3ff;padding:10px 12px;border-radius:7px;font-size:13px}
+.controls{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.field{display:flex;flex-direction:column;gap:5px}.field label{font-size:13px;color:var(--muted)}input,select,button{font:inherit}input[type=number],input[type=text],select{width:100%;border:1px solid #cfd6e2;border-radius:8px;padding:9px;background:#fff;color:var(--ink)}input[type=checkbox]{transform:scale(1.1)}button{border:0;border-radius:9px;background:var(--accent);color:#fff;padding:10px 14px;cursor:pointer;font-weight:650}button.secondary{background:#e9edf5;color:#24324c}button:disabled{opacity:.5;cursor:wait}.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px}
+.status{font-size:13px;padding:10px;border-radius:8px;background:#f1f5f9;color:#334155;margin-top:10px}.status.ok{background:#eaf8f0;color:#12613b}.status.error{background:#fff0ed;color:#9b2c15}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:8px 7px;border-bottom:1px solid var(--line);text-align:right}th:first-child,td:first-child{text-align:left}th{color:var(--muted);font-weight:600;background:#fafbfc;position:sticky;top:0}
+.table-wrap{max-height:390px;overflow:auto;border:1px solid var(--line);border-radius:10px}.weight{max-width:95px;text-align:right;padding:6px!important}.check{text-align:center!important}.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.metric{background:#f7f9fc;border:1px solid var(--line);border-radius:12px;padding:13px}.metric .label{font-size:12px;color:var(--muted)}.metric .value{font-size:clamp(18px,2.5vw,25px);font-weight:750;margin-top:4px}.metric .sub{font-size:12px;color:var(--muted);margin-top:3px}
+.charts{display:grid;grid-template-columns:1fr 1fr;gap:14px}.chartbox{border:1px solid var(--line);border-radius:12px;padding:12px;min-width:0}.chartbox canvas{width:100%;height:280px;display:block}.charttitle{font-size:14px;font-weight:700;margin-bottom:5px}
+.two{display:grid;grid-template-columns:1.2fr .8fr;gap:16px}.smallgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.assetnote{font-size:12px;color:var(--muted);margin-top:8px}
+details{border:1px solid var(--line);border-radius:10px;padding:10px 12px}summary{cursor:pointer;font-weight:650}footer{max-width:1180px;margin:auto;padding:0 18px 30px;color:var(--muted);font-size:12px}
+@media(max-width:800px){.controls{grid-template-columns:repeat(2,minmax(0,1fr))}.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.charts,.two{grid-template-columns:1fr}.smallgrid{grid-template-columns:1fr 1fr}main{padding:10px}.card{padding:14px}}
+@media(max-width:430px){.controls{grid-template-columns:1fr 1fr}.metric .value{font-size:18px}th,td{padding:7px 5px}}
+
+/* iPhone: 資産配分を横長テーブルから読みやすいカードに変更 */
+@media(max-width:700px){
+ #assetTable, #assetTable tbody{display:block;width:100%}
+ #assetTable thead{display:none}
+ #assetTable tr{display:grid;grid-template-columns:50px minmax(0,1fr) minmax(110px,125px);gap:8px;align-items:center;margin:10px 0;padding:12px;border:1px solid var(--line);border-radius:12px;background:#fff}
+ #assetTable td{display:block;border:0;padding:2px;text-align:left;min-width:0;overflow-wrap:anywhere}
+ #assetTable td:nth-child(1){grid-column:1;grid-row:1;text-align:center}
+ #assetTable td:nth-child(2){grid-column:2/4;grid-row:1;font-size:15px}
+ #assetTable td:nth-child(3){grid-column:1/4;grid-row:2;display:flex;align-items:center;gap:12px;padding:9px 4px;background:#f2f6ff;border-radius:8px}
+ #assetTable td:nth-child(3)::before{content:'資産配分（%）';font-size:14px;font-weight:700;white-space:nowrap}
+ #assetTable .weight{max-width:none!important;width:120px!important;font-size:17px!important;padding:9px!important;text-align:right!important}
+ #assetTable td:nth-child(n+4){font-size:12px;line-height:1.4}
+ #assetTable td:nth-child(4){grid-column:1/4;grid-row:3}
+ #assetTable td:nth-child(4)::before{content:'データ開始：';color:var(--muted)}
+ #assetTable td:nth-child(5){grid-column:1;grid-row:4}
+ #assetTable td:nth-child(6){grid-column:2;grid-row:4}
+ #assetTable td:nth-child(7){grid-column:3;grid-row:4}
+ #assetTable td:nth-child(5)::before{content:'年率リターン';display:block;color:var(--muted);font-size:11px}
+ #assetTable td:nth-child(6)::before{content:'年率リスク';display:block;color:var(--muted);font-size:11px}
+ #assetTable td:nth-child(7)::before{content:'最大下落率';display:block;color:var(--muted);font-size:11px}
+ .table-wrap{max-height:none;overflow:visible;border:0}
+}
+
+/* v15: 監査結果は小画面では横幅を強制せずカード表示 */
+#auditTable{table-layout:fixed}#auditTable th,#auditTable td{overflow-wrap:anywhere;word-break:break-word;vertical-align:top}
+#auditTable th:nth-child(1){width:10%}#auditTable th:nth-child(2){width:9%}#auditTable th:nth-child(3){width:23%}#auditTable th:nth-child(4){width:12%}#auditTable th:nth-child(5){width:46%}
+#auditTable td:nth-child(5){text-align:left}
+@media(max-width:700px){
+ #auditTable,#auditTable tbody{display:block;width:100%}#auditTable thead{display:none}
+ #auditTable tr{display:grid;grid-template-columns:1fr 1fr;gap:5px 12px;margin:10px 0;padding:12px;border:1px solid var(--line);border-radius:10px}
+ #auditTable td{display:block;border:0;padding:2px 0;text-align:left!important;min-width:0;overflow-wrap:anywhere}
+ #auditTable td:nth-child(1){grid-column:1/3;font-size:17px;font-weight:700}
+ #auditTable td:nth-child(2)::before{content:'月数：';color:var(--muted)}
+ #auditTable td:nth-child(3){grid-column:1/3}
+ #auditTable td:nth-child(3)::before{content:'収録期間：';color:var(--muted)}
+ #auditTable td:nth-child(4)::before{content:'欠損月：';color:var(--muted)}
+ #auditTable td:nth-child(5){grid-column:1/3;background:#f6f8fb;padding:8px;border-radius:7px}
+}
+</style>
+</head>
+<body>
+<header><div class="inner">
+<h1>ポートフォリオ将来シミュレータ</h1>
+<p>実際の過去リターンを再抽出し、資産成長と暴落耐性を同時に検証する試作版</p>
+<span class="pill">v15 · 共通期間の制約診断とスマホ表示改善</span>
+</div></header>
+<main>
+<section class="card">
+<h2>1. データを読み込む</h2>
+<p class="muted">米国ETFは実際の調整後終値（配当・分割調整済み）です。米国市場の月次リターンを同じ月ごとにまとめて再抽出するため、資産間の相関や実際に観測された極端な月次変動がある程度保たれます。</p>
+<div class="actions">
+<button id="loadBtn">実データを読み込む</button>
+<label class="muted">独自CSVを追加・置換： <input type="file" id="csvFile" accept=".csv,text/csv"></label>
+<button class="secondary" id="templateBtn">CSVテンプレートを保存</button>
+</div>
+<div id="status" class="status">未読み込みです。「実データを読み込む」を押してください。インターネット接続が必要です。</div>
+<p class="muted">【v7】2869の設定前はQQQの日次調整後価格から日次2倍・年率コスト0.75%の仮想リターンを計算し、実商品データの月次リターンに接続します。仮想部分は実績ではありません。分割の不連続は別途検査します。なお2869の2026年7月の公式25分割のみ、価格比を確認したうえで補正します。初期データ：<a href="https://github.com/manisahni/marketdata" target="_blank" rel="noopener">公開データセットの説明・検証情報</a>（2004-01-02〜2026-08-11）。為替系列はFREDのUSD/JPY（DEXJPUS）を取得し、可能な場合は円換算します。データ取得に失敗した場合は、架空データを作らずエラー表示します。</p>
+</section>
+
+<section class="card">
+<h2>2. 資産配分とシミュレーション条件</h2>
+<div class="controls">
+<div class="field"><label for="initial">初期資産（円）</label><input id="initial" type="number" min="0" step="1000000" value="100000000"></div>
+<div class="field"><label for="years">期間（年）</label><input id="years" type="number" min="1" max="50" value="20"></div>
+<div class="field"><label for="monthly">毎月の積立額（円）</label><input id="monthly" type="number" min="0" step="10000" value="0"></div>
+<div class="field"><label for="inflation">インフレ率（年率％）</label><input id="inflation" type="number" min="-5" max="20" step="0.5" value="2"></div>
+<div class="field"><label for="paths">シミュレーション経路数</label><select id="paths"><option value="500">500</option><option value="1000" selected>1,000</option><option value="3000">3,000</option><option value="5000">5,000</option></select></div>
+<div class="field"><label for="seed">乱数シード（同じ値なら再現）</label><input id="seed" type="number" value="4329"></div>
+<div class="field"><label for="blockMonths">過去データの抽出方法</label><select id="blockMonths"><option value="1">1か月単位（従来方式）</option><option value="6">連続6か月単位</option><option value="12" selected>連続12か月単位（感度分析用）</option><option value="24">連続24か月単位</option></select></div>
+<div class="field"><label for="goal">目標資産（円）</label><input id="goal" type="number" step="1000000" value="200000000"></div>
+<div class="field"><label for="scenario">将来リターンの想定</label><select id="scenario"><option value="historical">過去実績型（参考・楽観寄り）</option><option value="standard" selected>標準型（控えめな仮定）</option><option value="pessimistic">悲観型（低成長を想定）</option></select></div>
+<div class="field"><label for="fxMode">米国資産の円換算</label><select id="fxMode"><option value="jpy" selected>USD/JPYを適用（取得できた場合）</option><option value="usd">米ドル建てのまま分析</option></select></div>
+</div>
+<div class="notice" style="margin-top:12px">過去実績は将来の期待リターンではありません。特に短期の高リターンを20年に延長すると過大な金額になります。通常は売却・リバランスせず保有を継続し、指定年にだけ設定比率へ一括変更します。積立は各月末に追加します。税金・売買コスト・配当課税は未反映です。暴落ショックは観測月次リターンに追加されるため、指定値は最終的な下落率ではありません。米国ETFは調整後終値を使用するため、配当再投資を概ね反映します。</div>
+<div class="actions"><button id="runBtn" disabled>シミュレーションを実行</button><button class="secondary" id="equalBtn">選択資産を均等配分</button><span class="muted" id="weightSum">配分合計：0%</span></div>
+</section>
+
+<section class="card">
+<h2>3. 使用する資産とウェイト</h2>
+<p class="muted">チェックした資産をポートフォリオに含めます。ウェイト合計は100％にしてください。データ期間が異なる資産があるため、比較可能な共通期間で計算します。</p>
+<div class="table-wrap"><table id="assetTable"><thead><tr><th>使用</th><th>資産（ティッカー）</th><th>配分</th><th>データ開始</th><th>年率リターン*</th><th>年率リスク*</th><th>最大下落率*</th></tr></thead><tbody><tr><td colspan="7" style="text-align:center">データ読み込み後に表示</td></tr></tbody></table></div>
+<p class="assetnote">* 過去実績の参考値。年率リターンは幾何平均、年率リスクは月次標準偏差×√12、最大下落率は月末価格ベース。将来予測値ではありません。</p>
+</section>
+
+<section class="card">
+<h2>4. 将来の資産配分変更（任意）</h2>
+<p class="muted">通常は保有し続け、指定した年の<strong>年初</strong>にだけ、目標配分へ一度に変更します。配分変更時には必要な売却・購入が行われる想定です。年数は開始時点からの経過年数です。追加資金投入は不要です。</p>
+<div class="actions"><button type="button" class="secondary" id="addSchedule">変更年を追加</button><button type="button" class="secondary" id="clearSchedule">すべて削除</button></div>
+<div class="field" style="margin:12px 0"><label><input type="checkbox" id="lockDC" checked> DC資産は配分変更時に売買しない</label><span class="muted">DCは他資産との資金移動を禁止し、変更時は非DC資産だけを目標比率に比例配分します。入力した全体の目標比率とは一致しない場合があります。</span></div>
+<div id="scheduleRows"></div>
+<p class="muted">各変更時点の比率合計を100%にしてください。指定年以外はリバランスしません。売却益への税金や売買費用は未反映です。DC固定を選択すると、DC残高を売買せず非DC部分のみ再配分します。DC内のスイッチングや拠出は別途モデル化していません。</p>
+</section>
+
+<section class="card">
+<h2>5. 暴落シナリオ（任意）</h2>
+<div class="controls">
+<div class="field"><label><input type="checkbox" id="crashOn"> 1回の暴落ショックを追加</label><span class="muted">全経路の指定年に強制適用</span></div>
+<div class="field"><label for="crashYear">発生年</label><input id="crashYear" type="number" min="1" max="50" value="5"></div>
+<div class="field"><label for="equityShock">株式ETFの追加ショック（％）</label><input id="equityShock" type="number" min="-90" max="30" value="-40"></div>
+<div class="field"><label for="shockMode">暴落と通常リターンの関係</label><select id="shockMode"><option value="replace" selected>対象資産の通常変動を置き換える（重複を抑制）</option><option value="add">通常変動に上乗せ（厳しいストレス）</option></select></div>
+<div class="field"><label for="shockMonths">追加暴落の進行期間</label><select id="shockMonths"><option value="1">1か月</option><option value="6" selected>6か月</option><option value="12">12か月</option><option value="24">24か月</option></select></div>
+<div class="field"><label for="bondShock">債券ETFの追加ショック（％）</label><input id="bondShock" type="number" min="-60" max="30" value="5"></div>
+<div class="field"><label><input type="checkbox" id="secondCrash"> 2回目の暴落も追加</label><span class="muted">1回目と同じショック幅を使用</span></div>
+<div class="field"><label for="secondCrashYear">2回目の発生年</label><input id="secondCrashYear" type="number" min="1" max="50" value="13"></div>
+</div>
+<p class="muted">株式ETF（レバレッジ型を含む）・債券ETFの分類はティッカーによる簡易判定です。レバレッジ型の追加ショックは日次リセットの厳密な再現ではなく、指定期間にわたる月次ショックの近似です。金・現金相当はこのショックでは変化させません。これは「将来必ず起きる確率予測」ではなく、指定した暴落を受けた場合の耐性テストです。置き換えモードでは対象資産のその月の抽出リターンを使用せず、指定したショックの月次分割値を適用します。</p>
+</section>
+
+<section class="card">
+<h2>6. 結果</h2>
+<div class="notice" id="assumptionNote">標準型を選択中。資産ごとに設定した年率の仮定リターンに合わせて、過去の月次変動を平行移動します。実際の将来収益を予測するものではありません。</div>
+<div id="resultsIntro" class="muted">データを読み込み、シミュレーションを実行してください。</div>
+<div class="metrics" id="metrics" style="margin-top:12px">
+<div class="metric"><div class="label">20年後の中央値</div><div class="value">—</div><div class="sub">名目資産額</div></div>
+<div class="metric"><div class="label">5パーセンタイル</div><div class="value">—</div><div class="sub">下位5％の境界</div></div>
+<div class="metric"><div class="label">目標達成確率</div><div class="value">—</div><div class="sub">設定目標以上</div></div>
+<div class="metric"><div class="label">実質資産中央値</div><div class="value">—</div><div class="sub">インフレ調整後</div></div>
+</div>
+<div class="chartbox" style="margin-top:14px"><div class="charttitle">配分変更あり・なしの暴落耐性比較</div><p class="muted">同じ乱数シード・月次リターン・暴落条件で比較します。最大下落率は各経路の過去最高値からの下落率です。最大損失額は経路内の最高値からの最大減少額（円）で、初期資産からの損失額とは異なります。売却税・手数料は含みません。</p><div class="table-wrap" style="max-height:none"><table id="comparisonTable"><thead><tr><th>指標</th><th>変更なし</th><th>指定変更あり</th></tr></thead><tbody><tr><td colspan="3">シミュレーション実行後に表示</td></tr></tbody></table></div></div>
+<div class="charts" style="margin-top:14px">
+<div class="chartbox"><div class="charttitle">将来資産の試算分布（5・25・50・75・95％）</div><canvas id="fanChart" width="700" height="340"></canvas><div class="muted">名目円。帯は各年の資産額の分位点です。</div></div>
+<div class="chartbox"><div class="charttitle">過去の資産配分：リターン相関</div><canvas id="corrChart" width="700" height="340"></canvas><div class="muted">月次リターンの相関係数。濃いほど正の相関、薄いほど負の相関です。</div></div>
+</div>
+<div class="charts" style="margin-top:14px">
+<div class="chartbox"><div class="charttitle">シミュレーション経路ごとの最大下落率</div><canvas id="ddChart" width="700" height="300"></canvas></div>
+<div class="chartbox"><div class="charttitle">過去データに基づくポートフォリオ指標</div><div id="historyStats" class="smallgrid"></div></div>
+</div>
+</section>
+
+<section class="card">
+<h2>7. 計算エンジンの自己検証</h2>
+<p class="muted">市場データを使わない数学的な単体テストです。実データの品質や将来予測の正しさを保証するものではありません。</p>
+<button id="selfTestBtn" type="button">自己検証を実行</button>
+<div id="selfTestResult" class="status">未実行</div>
+</section>
+<section class="card">
+<h2>8. 実データの品質監査</h2>
+<p class="muted">「実データを読み込む」後に実行してください。資産ごとの月次データ範囲・欠損・共通期間・2869の推計依存度を点検します。市場の予測精度を保証する機能ではありません。</p>
+<button id="auditBtn" type="button">実データを監査する</button>
+<div id="auditSummary" class="status">未実行。まず実データを読み込んでください。</div>
+<div id="auditBottleneck" class="status" style="white-space:pre-wrap">共通期間の制約診断は監査後に表示されます。</div>
+<div class="table-wrap" style="max-height:none;margin-top:12px"><table id="auditTable"><thead><tr><th>銘柄</th><th>月数</th><th>開始〜終了</th><th>期間内欠損</th><th>備考</th></tr></thead><tbody><tr><td colspan="5">未実行</td></tr></tbody></table></div>
+<p class="muted">監査対象は月次リターンです。価格の配当・分割調整の正確性、為替の日付整合、データ供給元の信頼性、2008年の実績再現は別途検証が必要です。</p>
+</section>
+<section class="card">
+<h2>9. 方法と限界</h2>
+<details open><summary>このv15で行っていること</summary>
+<ul>
+<li>実際の調整後終値から月次リターンを作成し、資産ごとの過去リターン・ボラティリティ・相関・最大下落率を算出。</li>
+<li>連続する12か月をブロック単位で抽出し、同じ月の資産リターンをひとまとまりとして使うため、資産間の同時変動を保ったまま将来経路を生成。</li>
+<li>歴史上の12か月連続の月次リターンを復元抽出するので、正規分布を仮定する方式よりも実データにあった歪みや極端な月を含められる。</li>
+<li>将来の平均成長率を「過去実績・標準・悲観」から選び、過去の月次リターンの同時変動を保持したまま、銘柄別の平均対数リターンを調整する。</li>
+<li>指定した1回または2回の追加ショックを適用し、暴落への耐性を比較できる。</li>
+</ul></details>
+<details><summary>まだ実装していない／注意が必要なこと</summary>
+<ul>
+<li>1570・2869・1489はYahoo Financeの公開価格系列の取得を試みます。取得に失敗した銘柄は配分0％に変更されます。調整後価格の分配金反映・取得範囲は提供元に依存します。</li>
+<li>全世界株はACWI、DC日本株はEWJ、DC米国株はSPY、DC世界株はACWIで近似しています。DCの正確な商品リターンとは異なります。現金は円建て・無利息で固定しています。</li>
+<li>円換算用のUSD/JPYを取得できない場合、円建てのシミュレーション実行を停止します。</li>
+<li>標準型・悲観型の年率リターンは検証済みの予測値ではなく、ユーザーが比較するための固定仮定です。円建てであり、将来の為替水準を予測しません。レバレッジ商品は特に仮定への感応度が高いです。</li>
+<li>2008年の暴落を実際の全資産の同時リターンとして再現する機能は未実装です。v15でも未検証の長期データを追加していません。2017年以降の共通期間の変動に指定暴落を追加する簡易テストです。</li>
+<li>v12以降は暴落ショックを通常リターンと置き換える選択肢を追加し、同月の二重下落を抑制します。ただし、実際の危機時の株式・債券・為替の相関や日次レバレッジの減価を正確に再現するものではありません。ブートストラップは過去に起きたリターンしか再利用しません。過去より大きい危機、構造変化、将来の制度変更を自動予測するものではありません。</li>
+<li>DC固定オプションはDCを一切売買せず、非DC資産だけを指定した比率で配分します。指定した全体の目標比率は保証しません。通常は保有を継続し、指定年の年初にだけ目標配分へ変更。毎月末積立は、その時点の配分比率に応じて投入。税金、手数料、売買タイミング、個別商品の制度差、資産クラスごとの将来リターン変化は未反映です。</li>
+<li>元データの期間は2026年8月11日までです。公開データの更新や取得失敗によって利用できない場合があります。</li>
+</ul></details>
+</section>
+</main>
+<footer>投資判断を自動で行うものではありません。過去データによる分析・ストレステスト用です。出典：marketdata GitHub（調整後終値）、FRED DEXJPUS（為替）。データを再配布する場合は各提供元の利用条件を確認してください。</footer>
+
+<script>
+const DATA_URL='https://raw.githubusercontent.com/manisahni/marketdata/main/daily_adjclose.csv';
+const FX_URL='https://fred.stlouisfed.org/graph/fredgraph.csv?id=DEXJPUS';
+const ALL=[
+ {s:'SPY',n:'S&P500（SPYで近似・ドル建て）',w:20.8,k:'equity'},
+ {s:'QQQ',n:'NASDAQ100（QQQで近似・ドル建て）',w:3.4,k:'equity'},
+ {s:'EFA',n:'先進国株（米国除く）',w:0,k:'equity'},
+ {s:'EEM',n:'新興国株ETF',w:0,k:'equity'},
+ {s:'IWM',n:'米国小型株ETF',w:0,k:'equity'},
+ {s:'TLT',n:'米国長期国債ETF（ドル建て）',w:6.3,k:'bond'},
+ {s:'IEF',n:'米国中期国債ETF',w:0,k:'bond'},
+ {s:'SHY',n:'米国短期国債ETF',w:0,k:'bond'},
+ {s:'GLD',n:'金ETF',w:0,k:'gold'},
+ {s:'TIP',n:'米国物価連動債ETF',w:0,k:'bond'},
+ {s:'LQD',n:'投資適格社債ETF',w:0,k:'bond'},
+ {s:'HYG',n:'ハイイールド債ETF',w:0,k:'bond'},
+ {s:'VNQ',n:'米国REIT ETF',w:0,k:'equity'},
+ {s:'DBC',n:'コモディティETF',w:0,k:'gold'},
+ {s:'1570',n:'日経平均レバレッジETF（実際の商品）',w:29.6,k:'lever',jpy:true,yahoo:'1570.T'},
+ {s:'2869',n:'NASDAQ100レバレッジETF（実際の商品）',w:5.4,k:'lever',jpy:true,yahoo:'2869.T'},
+ {s:'1489',n:'日経平均高配当株50 ETF（実際の商品）',w:5.5,k:'equity',jpy:true,yahoo:'1489.T'},
+ {s:'ACWI',n:'全世界株（ACWIで近似・ドル建て）',w:10.7,k:'equity',yahoo:'ACWI'},
+ {s:'BTCJPY',n:'ビットコイン（円建て）',w:0.9,k:'equity',jpy:true,yahoo:'BTC-JPY'},
+ {s:'CASH',n:'現金（円建て・利息0％）',w:6.0,k:'cash',jpy:true},
+ {s:'DCJP',n:'DC日本株（EWJで近似・ドル建て）',w:7.1,k:'equity',yahoo:'EWJ'},
+ {s:'DCUS',n:'DC米国株（SPYで近似・ドル建て）',w:3.5,k:'equity',alias:'SPY'},
+ {s:'DCWORLD',n:'DC世界株（ACWIで近似・ドル建て）',w:0.8,k:'equity',alias:'ACWI'}
+];
+let rawRows=[], fxMap=new Map(), extraPrices={}, assetData=[], monthlyRows=[], selected=[], lastResult=null, isJPY=true;let blocked=new Set(),fxSource='';let split2869Note='', synthetic2869Months=0, synthetic2869Start='', synthetic2869End='';
+const $=id=>document.getElementById(id);
+function setStatus(msg,type=''){ $('status').textContent=msg;$('status').className='status '+type; }
+function parseCSV(text){let lines=text.trim().split(/\r?\n/);let headers=lines[0].replace(/^\uFEFF/,'').split(',').map(x=>x.trim().replace(/^"|"$/g,''));return lines.slice(1).map(line=>{let a=line.split(',');let o={};headers.forEach((h,i)=>o[h]=(a[i]||'').trim().replace(/^"|"$/g,''));return o;}).filter(r=>r[headers[0]]);}
+function dateKey(s){return String(s).slice(0,10)}
+async function loadData(){
+ $('loadBtn').disabled=true;setStatus('実データを取得中です。少し時間がかかる場合があります…');
+ try{
+   const r=await fetch(DATA_URL,{cache:'no-store'});if(!r.ok)throw new Error('価格CSVの取得に失敗（HTTP '+r.status+'）');const txt=await r.text();rawRows=parseCSV(txt);
+   if(rawRows.length<1000||!rawRows[0].SPY)throw new Error('CSVの形式またはデータ件数が想定と異なります。');
+   fxMap.clear();extraPrices={};blocked.clear();split2869Note='';synthetic2869Months=0;synthetic2869Start='';synthetic2869End='';let fxOk=false;fxSource='';
+   if($('fxMode').value==='jpy'){
+     try{const fr=await fetch(FX_URL,{cache:'no-store'});if(fr.ok){const frows=parseCSV(await fr.text());for(const r of frows){const d=dateKey(r.observation_date||r.DATE||Object.values(r)[0]);const v=Number(r.DEXJPUS||Object.values(r)[1]);if(d&&Number.isFinite(v)&&v>0)fxMap.set(d,v);}fxOk=fxMap.size>100;if(fxOk)fxSource='FRED';}}catch(e){}
+     if(!fxOk){try{const u='https://proxy.cors.dev/https://query1.finance.yahoo.com/v8/finance/chart/JPY=X?period1=0&period2=1798761600&interval=1d';const fr=await fetch(u);if(fr.ok){const j=await fr.json(),x=j.chart?.result?.[0],v=x?.indicators?.quote?.[0]?.close;x?.timestamp?.forEach((t,i)=>{if(Number.isFinite(v?.[i])&&v[i]>0)fxMap.set(new Date(t*1000).toISOString().slice(0,10),v[i]);});fxOk=fxMap.size>100;if(fxOk)fxSource='Yahoo USD/JPY';}}catch(e){}}
+   }
+   isJPY=fxOk&&$('fxMode').value==='jpy';
+   const notes=[];
+   for(const a of ALL.filter(x=>x.yahoo)){
+     try{const u='https://proxy.cors.dev/https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(a.yahoo)+'?period1=0&period2=1798761600&interval=1d';const res=await fetch(u);if(!res.ok)throw Error('HTTP '+res.status);const j=await res.json();const x=j.chart?.result?.[0];if(!x?.timestamp?.length)throw Error('価格なし');const adjusted=x.indicators?.adjclose?.[0]?.adjclose;const quoted=x.indicators?.quote?.[0]?.close;const mp={};x.timestamp.forEach((t,i)=>{const price=Number.isFinite(adjusted?.[i])&&adjusted[i]>0?adjusted[i]:quoted?.[i];if(Number.isFinite(price)&&price>0){const d=new Date(t*1000).toISOString().slice(0,7);mp[d]=price;}});if(Object.keys(mp).length<24)throw Error('24か月未満');extraPrices[a.s]=mp;notes.push(a.s+'取得');}
+     catch(e){notes.push(a.s+'取得失敗');a.w=0;}
+   }
+   // 大和アセットマネジメント公式資料：2869は2026-07-03に1:25の受益権分割。
+   // Yahooの調整後価格が既に分割調整済みなら二重補正しない。
+   // 2026-06→07の価格比が約1/25の時だけ、分割前価格を1/25に揃える。
+   const m2869=extraPrices['2869'];
+   if(m2869?.['2026-06']&&m2869?.['2026-07']){
+     const ratio=m2869['2026-07']/m2869['2026-06'];
+     if(ratio>0.025&&ratio<0.065){
+       for(const m of Object.keys(m2869))if(m<'2026-07')m2869[m]/=25;
+       split2869Note='2869：公式25分割を補正（2026年7月、分割前価格÷25）';
+     }else if(ratio>0.5&&ratio<1.8){
+       split2869Note='2869：2026年7月の価格は分割調整済みと判定（二重補正なし）';
+     }else{
+       split2869Note='2869：分割前後の価格比が不明瞭。異常値検査を継続';
+     }
+   }else{
+     split2869Note='2869：分割前後の月次価格が不足。異常値検査を継続';
+   }
+   notes.push(split2869Note);
+   buildMonthly();
+   extend2869WithDailyProxy(notes);
+   // ETFの株式分割・併合や取得元の異常値を検知。修正根拠がないため補間・捏造しない。
+   for(const a of ALL.filter(x=>x.yahoo&&extraPrices[x.s])){
+     const vals=getSeries(a.s);
+     const bad=vals.filter(v=>!Number.isFinite(v)||v<=-0.80||v>=1.5);
+     if(bad.length){
+       blocked.add(a.s);a.w=0;notes.push(a.s+'異常値検知（'+bad.map(v=>(v*100).toFixed(1)+'%').join(', ')+'）・分析対象外');
+     }
+   }
+   renderAssets();$('runBtn').disabled=!isJPY;
+   const start=monthlyRows[0]?.date||'—',end=monthlyRows[monthlyRows.length-1]?.date||'—';
+   setStatus(`読み込み完了：${rawRows.length.toLocaleString()}営業日、月次データ ${monthlyRows.length}か月（${start}〜${end}）。`+(isJPY?'ドル資産は円換算（'+fxSource+'）。':'為替未取得：円建ての将来推計を停止しました。')+' 日本銘柄：'+notes.join('／')+'。取得失敗・異常値の銘柄は配分0％です。合計を100％に再設定してください。','ok');
+ }catch(e){setStatus('読み込み失敗：'+e.message+'。ネットワーク制限がある場合は、公開元からCSVを取得して「独自CSVを追加・置換」で読み込んでください。架空データは使用しません。','error');}
+ finally{$('loadBtn').disabled=false;}
+}
+function buildMonthly(){
+ const byMonth=new Map();let lastFx=NaN;
+ for(const r of rawRows){const d=dateKey(r.Date||r.date);if(!d)continue;const m=d.slice(0,7);let fx=fxMap.get(d);if(fx)lastFx=fx;let row={date:m};for(const a of ALL.filter(x=>!x.yahoo&&!x.alias&&!x.jpy)){let v=Number(r[a.s]);if(Number.isFinite(v)&&v>0&&(!isJPY||Number.isFinite(lastFx)))row[a.s]=isJPY?v*lastFx:v;}byMonth.set(m,row);}
+ const prices=[...byMonth.values()].sort((a,b)=>a.date.localeCompare(b.date));
+ for(const row of prices){for(const a of ALL){if(a.yahoo&&extraPrices[a.s]?.[row.date]){let v=extraPrices[a.s][row.date];if(!a.jpy&&isJPY){let fx=NaN;for(const [d,rate] of fxMap){if(d.slice(0,7)===row.date)fx=rate;}if(Number.isFinite(fx))v*=fx;}row[a.s]=v;}if(a.alias)row[a.s]=row[a.alias];if(a.s==='CASH')row.CASH=1;}}
+ monthlyRows=[];
+ for(let i=1;i<prices.length;i++){const ret={date:prices[i].date};for(const a of ALL){const p0=prices[i-1][a.s],p1=prices[i][a.s];if(Number.isFinite(p0)&&Number.isFinite(p1)&&p0>0)ret[a.s]=p1/p0-1;}monthlyRows.push(ret);}
+}
+// 2869上場以前のみ、QQQの米ドル建て日次調整後価格から2倍の日次リセットを近似。
+// コストは年率0.75%の固定仮定。円換算は各月のUSD/JPY月末値の比で行う。
+// 実際の2869の月次騰落率が存在する月は絶対に上書きしない。
+function extend2869WithDailyProxy(notes){
+ if(!isJPY||!extraPrices['2869']){notes.push('2869長期近似：為替または実商品データ不足で作成せず');return;}
+ const days=rawRows.map(r=>({d:dateKey(r.Date||r.date),p:Number(r.QQQ)}))
+   .filter(x=>/^\d{4}-\d{2}-\d{2}$/.test(x.d)&&Number.isFinite(x.p)&&x.p>0)
+   .sort((a,b)=>a.d.localeCompare(b.d));
+ const monthly=new Map();let prev=null;
+ for(const day of days){
+   if(prev){
+     const gap=(Date.parse(day.d)-Date.parse(prev.d))/86400000;
+     const daily=day.p/prev.p-1;
+     if(gap>0&&gap<=7&&daily>-0.5&&daily<0.5){
+       const month=day.d.slice(0,7);
+       const rec=monthly.get(month)||{factor:1,count:0};
+       // レバレッジ倍率2、仮定コスト0.75%/年を252営業日で日割り
+       const factor=1+2*daily-0.0075/252;
+       if(factor>0){rec.factor*=factor;rec.count++;monthly.set(month,rec);}
+     }
+   }
+   prev=day;
+ }
+ const fxMonthly=new Map();
+ for(const [d,v] of [...fxMap.entries()].sort((a,b)=>a[0].localeCompare(b[0])))fxMonthly.set(d.slice(0,7),v);
+ let count=0;
+ for(const row of monthlyRows){
+   if(Number.isFinite(row['2869']))continue;
+   const m=row.date,rec=monthly.get(m),prevMonth=new Date(m+'-01T00:00:00Z');
+   prevMonth.setUTCMonth(prevMonth.getUTCMonth()-1);
+   const prior=prevMonth.toISOString().slice(0,7);
+   const f0=fxMonthly.get(prior),f1=fxMonthly.get(m);
+   if(!rec||rec.count<12||!Number.isFinite(f0)||!Number.isFinite(f1)||f0<=0)continue;
+   const ret=rec.factor*(f1/f0)-1;
+   if(ret<=-0.80||ret>=1.5||!Number.isFinite(ret))continue;
+   row['2869']=ret;count++;
+   if(!synthetic2869Start)synthetic2869Start=m;
+   synthetic2869End=m;
+ }
+ synthetic2869Months=count;
+ notes.push(count?`2869：実商品データ以前の${count}か月をQQQ日次2倍の推計値で補完（${synthetic2869Start}〜${synthetic2869End}、年率仮定コスト0.75%）`:'2869：長期近似系列を作成できませんでした');
+}
+function fmtMoney(v){if(!Number.isFinite(v))return '—';return (v/1e8).toLocaleString('ja-JP',{maximumFractionDigits:2})+'億円';}
+function fmtPct(v){return Number.isFinite(v)?(v*100).toFixed(1)+'%':'—'}
+function getSeries(sym){return monthlyRows.map(r=>r[sym]).filter(Number.isFinite)}
+function metricsFor(returns){
+ if(!returns.length)return {};
+ const mean=returns.reduce((a,b)=>a+b,0)/returns.length;
+ const vol=Math.sqrt(returns.reduce((a,b)=>a+(b-mean)**2,0)/Math.max(1,returns.length-1))*Math.sqrt(12);
+ let wealth=1,peak=1,dd=0,monthsSincePeak=0,maxRecovery=0,peakIdx=0,curRecovery=0;
+ let worst=Infinity;
+ for(let i=0;i<returns.length;i++){wealth*=1+returns[i];if(wealth>peak){maxRecovery=Math.max(maxRecovery,curRecovery);peak=wealth;peakIdx=i;curRecovery=0;}else curRecovery++;dd=Math.min(dd,wealth/peak-1);worst=Math.min(worst,returns[i]);}
+ const cagr=Math.pow(wealth,12/returns.length)-1;
+ return {cagr,vol,dd,worst,wealth,maxRecovery:Math.max(maxRecovery,curRecovery),months:returns.length};
+}
+function weightedReturns(){
+ const active=ALL.filter(a=>a.on&&a.w>0);const sum=active.reduce((s,a)=>s+a.w,0);if(!active.length||Math.abs(sum-100)>.01)return null;
+ const rows=monthlyRows.filter(r=>active.every(a=>Number.isFinite(r[a.s])));
+ return {active,rows,returns:rows.map(r=>active.reduce((s,a)=>s+(a.w/100)*r[a.s],0))};
+}
+function renderAssets(){
+ const tbody=$('assetTable').querySelector('tbody');tbody.innerHTML='';
+ const commonStart=monthlyRows[0]?.date||'—';
+ for(const a of ALL){
+   a.on=a.w>0&&getSeries(a.s).length>=24&&!blocked.has(a.s);
+   const ser=getSeries(a.s);const m=metricsFor(ser);
+   const tr=document.createElement('tr');
+   tr.innerHTML=`<td class="check"><input type="checkbox" data-s="${a.s}" ${a.on?'checked':''} ${blocked.has(a.s)?'disabled':''}></td><td><strong>${a.s}</strong><br><span class="muted">${a.n}</span></td><td><input class="weight" type="number" min="0" max="100" step="0.1" data-w="${a.s}" value="${a.w}" ${blocked.has(a.s)?'disabled':''}></td><td>${monthlyRows.find(r=>Number.isFinite(r[a.s]))?.date||'未取得'}</td><td>${fmtPct(m.cagr)}</td><td>${fmtPct(m.vol)}</td><td>${fmtPct(m.dd)}</td>`;
+   tbody.appendChild(tr);
+ }
+ tbody.querySelectorAll('[data-s]').forEach(el=>el.addEventListener('change',()=>{const a=ALL.find(x=>x.s===el.dataset.s);a.on=el.checked;updateWeightSum();}));
+ tbody.querySelectorAll('[data-w]').forEach(el=>el.addEventListener('input',()=>{const a=ALL.find(x=>x.s===el.dataset.w);a.w=Math.max(0,Number(el.value)||0);a.on=a.w>0;const cb=tbody.querySelector(`[data-s="${a.s}"]`);if(cb)cb.checked=a.on;updateWeightSum();}));
+ updateWeightSum();
+}
+function updateWeightSum(){let sum=ALL.filter(a=>a.on).reduce((s,a)=>s+a.w,0);$('weightSum').textContent='選択資産の配分合計：'+sum.toFixed(1)+'%'+(Math.abs(sum-100)<.01?'（OK）':'（100％に調整してください）');$('weightSum').style.color=Math.abs(sum-100)<.01?'var(--good)':'var(--warn)';}
+function equalWeights(){let active=ALL.filter(a=>a.on);if(!active.length)return;let w=100/active.length;active.forEach((a,i)=>{a.w=i===active.length-1?100-w*(active.length-1):w;});renderAssets();}
+function seeded(seed){return function(){let t=seed+=0x6D2B79F5;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return ((t^t>>>14)>>>0)/4294967296;}}
+function quantile(arr,q){if(!arr.length)return NaN;let s=[...arr].sort((a,b)=>a-b),p=(s.length-1)*q,i=Math.floor(p),f=p-i;return s[i+1]===undefined?s[i]:s[i]+f*(s[i+1]-s[i]);}
+// 年率の幾何平均リターンの固定仮定（円建て）。将来予測値ではない。
+const TARGET_RETURNS={
+ SPY:[.06,.03],QQQ:[.07,.03],EFA:[.05,.02],EEM:[.05,.01],IWM:[.06,.02],
+ TLT:[.025,-.015],IEF:[.02,.005],SHY:[.015,.005],GLD:[.035,.01],
+ TIP:[.02,.005],LQD:[.025,.005],HYG:[.035,.005],VNQ:[.05,.01],DBC:[.02,0],
+ '1570':[.08,-.04],'2869':[.09,-.06],'1489':[.055,.015],
+ ACWI:[.055,.025],BTCJPY:[.08,-.08],CASH:[0,0],DCJP:[.05,.015],
+ DCUS:[.06,.03],DCWORLD:[.055,.025]
+};
+function adjustedReturn(s,r,scenario,logMeans){
+ if(scenario==='historical'||s==='CASH')return r;
+ const target=(TARGET_RETURNS[s]||[.04,0])[scenario==='standard'?0:1];
+ // log(1+r)の平均を置換し、変動幅と同月の相関構造を概ね維持する。
+ const shifted=Math.expm1(Math.log1p(Math.max(-.999999,r))+
+      Math.log1p(target)/12-logMeans[s]);
+ return Math.max(-.999999,shifted);
+}
+function assumptionsText(active,scenario){
+ if(scenario==='historical')return '過去実績型：観測期間の月次リターンをそのまま再抽出。直近の高成長が長期に続く仮定になり得ます。';
+ const i=scenario==='standard'?0:1;
+ return (scenario==='standard'?'標準型':'悲観型')+'：円建ての仮定年率幾何リターン（確定予測ではありません）／'+
+ active.map(a=>a.s+' '+((TARGET_RETURNS[a.s]||[.04,0])[i]*100).toFixed(1)+'%').join('、')+
+ '。過去の月次変動を維持して平均対数リターンを調整。';
+}
+let schedules=[];
+function scheduleUI(){
+ const root=$('scheduleRows');root.innerHTML='';
+ schedules.forEach((entry,idx)=>{
+  const wrap=document.createElement('div');wrap.className='notice';wrap.style.marginTop='12px';
+  const head=document.createElement('div');head.className='actions';
+  const label=document.createElement('label');label.textContent='変更する年（年初） ';
+  const year=document.createElement('input');year.type='number';year.min='1';year.max='50';year.value=entry.year;year.style.width='90px';
+  year.addEventListener('input',()=>{entry.year=Number(year.value);});
+  label.appendChild(year);head.appendChild(label);
+  const del=document.createElement('button');del.type='button';del.className='secondary';del.textContent='この変更を削除';
+  del.addEventListener('click',()=>{schedules.splice(idx,1);scheduleUI();});
+  head.appendChild(del);wrap.appendChild(head);
+  const grid=document.createElement('div');grid.className='controls';
+  for(const a of ALL){
+   const field=document.createElement('div');field.className='field';
+   const lab=document.createElement('label');lab.textContent=a.s+'（%）';
+   const inp=document.createElement('input');inp.type='number';inp.min='0';inp.max='100';inp.step='.1';inp.value=entry.weights[a.s]||0;
+   inp.addEventListener('input',()=>{entry.weights[a.s]=Math.max(0,Number(inp.value)||0);refreshSum();});
+   field.append(lab,inp);grid.appendChild(field);
+  }
+  wrap.appendChild(grid);
+  const total=document.createElement('div');total.className='muted';wrap.appendChild(total);
+  function refreshSum(){const sum=Object.values(entry.weights).reduce((x,y)=>x+(Number(y)||0),0);total.textContent='配分合計 '+sum.toFixed(1)+'%'+(Math.abs(sum-100)<.01?'（OK）':'（100%にしてください）');total.style.color=Math.abs(sum-100)<.01?'var(--good)':'var(--warn)';}
+  refreshSum();root.appendChild(wrap);
+ });
+}
+$('addSchedule').addEventListener('click',()=>{schedules.push({year:5,weights:Object.fromEntries(ALL.map(a=>[a.s,a.w>0?a.w:0]))});scheduleUI();});
+$('clearSchedule').addEventListener('click',()=>{schedules=[];scheduleUI();});
+function simulate(){
+ if(!isJPY){alert('円換算用のUSD/JPYを取得できていません。円建て分析は実行できません。');return;}
+ const data=weightedReturns();if(!data){alert('選択した資産の配分合計を100％にしてください。');return;}
+ const {active,rows}=data;
+ const yearsRequested=Math.min(50,Math.max(1,Number($('years').value)||20));
+ const changeYears=new Set();const plan=[];
+ for(const e of schedules){
+  const year=Number(e.year),sum=Object.values(e.weights).reduce((x,v)=>x+(Number(v)||0),0);
+  if(!Number.isInteger(year)||year<1||year>=yearsRequested||changeYears.has(year)||Math.abs(sum-100)>.01){alert('配分変更の年は1年以上・終了年未満で重複不可、各配分合計は100%にしてください。');return;}
+  changeYears.add(year);plan.push({year,weights:{...e.weights}});
+ }
+ plan.sort((a,b)=>a.year-b.year);
+ const usedKeys=new Set([...active.map(a=>a.s),...plan.flatMap(e=>Object.entries(e.weights).filter(([k,v])=>v>0).map(([k])=>k))]);
+ if([...usedKeys].some(k=>blocked.has(k)||!ALL.some(a=>a.s===k))){alert('変更後の配分に利用できない資産が含まれます。');return;}
+ const simAssets=ALL.filter(a=>usedKeys.has(a.s));
+ const simRows=monthlyRows.filter(r=>simAssets.every(a=>Number.isFinite(r[a.s])));
+ if(simRows.length<60){alert('共通の月次データが60か月未満です。2869の近似系列を補完しても、ほかの選択資産のデータ開始時期によって共通期間が短くなります。配分を変えるか、データ取得状況を確認してください。');return;}
+ if(active.some(a=>blocked.has(a.s))){alert('異常値のある銘柄が選択されています。');return;}
+ const years=Math.min(50,Math.max(1,Number($('years').value)||20)),n=Number($('paths').value),init=Math.max(0,Number($('initial').value)||0),monthly=Math.max(0,Number($('monthly').value)||0),infl=(Number($('inflation').value)||0)/100,goal=Math.max(0,Number($('goal').value)||0);
+ const scenario=$('scenario').value,secondCrash=$('secondCrash').checked,secondYear=Math.min(years,Math.max(1,Number($('secondCrashYear').value)||13));
+ const logMeans={};for(const a of simAssets){logMeans[a.s]=simRows.reduce((v,r)=>v+Math.log1p(Math.max(-.999999,r[a.s])),0)/simRows.length;}
+ const crash=$('crashOn').checked,cy=Math.min(years,Math.max(1,Number($('crashYear').value)||5)),eqShock=(Number($('equityShock').value)||0)/100,bondShock=(Number($('bondShock').value)||0)/100;
+ const steps=years*12;
+ const blockMonths=Number($('blockMonths').value)||12;
+ const shockMonths=Number($('shockMonths').value)||6;
+ const shockMode=$('shockMode').value,lockDC=$('lockDC').checked;
+ // 連続ブロック再標本化。両比較経路で同じ乱数列を消費する。
+ function monthlyShockFactor(totalShock){return Math.pow(Math.max(.000001,1+totalShock),1/shockMonths);}
+ function shockActive(t,year){const end=year*12;return t>=end-shockMonths&&t<end;}
+ function runPaths(changePlan){
+  const rand=seeded(Number($('seed').value)||4329),paths=[],dds=[],end=[],losses=[],afterDD=[];
+  const firstChange=changePlan.length?changePlan[0].year*12:0;
+  for(let p=0;p<n;p++){
+   const holdings=Object.fromEntries(simAssets.map(a=>[a.s,init*(a.w>0&&a.on?a.w/100:0)]));
+   let blockStart=0;
+   let wealth=init,peak=Math.max(init,1),maxdd=0,maxLoss=0,series=[wealth],postPeak=0,postDD=0;
+   for(let t=0;t<steps;t++){
+    const change=changePlan.find(e=>e.year*12===t);
+    if(change){
+     wealth=Object.values(holdings).reduce((x,v)=>x+v,0);
+     if(lockDC){
+      const dcAssets=simAssets.filter(a=>a.s.startsWith('DC'));
+      const locked=dcAssets.reduce((sum,a)=>sum+holdings[a.s],0);
+      const liquid=Math.max(0,wealth-locked);
+      const nonDC=simAssets.filter(a=>!a.s.startsWith('DC'));
+      const requested=nonDC.reduce((sum,a)=>sum+(change.weights[a.s]||0),0);
+      if(requested>0){for(const a of nonDC)holdings[a.s]=liquid*(change.weights[a.s]||0)/requested;}
+     }else{for(const a of simAssets)holdings[a.s]=wealth*((change.weights[a.s]||0)/100);}
+    }
+    const offset=t%blockMonths;
+    if(offset===0)blockStart=Math.floor(rand()*Math.max(1,simRows.length-blockMonths+1));
+    const ri=Math.min(simRows.length-1,blockStart+offset),r=simRows[ri];
+    for(const a of simAssets){
+     let rr=r[a.s];if(!Number.isFinite(rr))rr=0;rr=adjustedReturn(a.s,rr,scenario,logMeans);
+     if(crash&&(shockActive(t,cy)||(secondCrash&&secondYear!==cy&&shockActive(t,secondYear)))){
+      const f=(a.k==='equity'||a.k==='lever')?monthlyShockFactor(eqShock):(a.k==='bond'?monthlyShockFactor(bondShock):1);
+      // レバレッジ型は月次の基準指数ショックを2倍近似。日次リセット・複利は再現していない。
+      const leveraged=(a.k==='lever')?Math.max(.000001,1+2*(f-1)):f;
+      rr=shockMode==='replace' ? leveraged-1 : (1+rr)*leveraged-1;
+     }
+     holdings[a.s]=Math.max(0,holdings[a.s]*(1+rr));
+    }
+    wealth=Object.values(holdings).reduce((x,v)=>x+v,0);
+    if(monthly>0){for(const a of simAssets)holdings[a.s]+=monthly*(wealth>0?holdings[a.s]/wealth:(change?.weights[a.s]||a.w)/100);wealth+=monthly;}
+    maxLoss=Math.max(maxLoss,peak-wealth);
+    if(wealth>peak)peak=wealth;maxdd=Math.min(maxdd,wealth/peak-1);
+    if(t===firstChange)postPeak=wealth;
+    if(t>=firstChange){if(wealth>postPeak)postPeak=wealth;postDD=Math.min(postDD,wealth/Math.max(postPeak,1)-1);}
+    if(t%12===11)series.push(wealth);
+   }
+   paths.push(series);dds.push(maxdd);end.push(wealth);losses.push(maxLoss);afterDD.push(postDD);
+  }
+  return {paths,dds,end,losses,afterDD};
+ }
+ const changed=runPaths(plan),baseline=plan.length?runPaths([]):changed;
+ const {paths,dds,end}=changed;
+ const cmpRows=[
+  ['20年後の中央値',x=>fmtMoney(quantile(x.end,.5))],
+  ['最大下落率の中央値',x=>fmtPct(quantile(x.dds,.5))],
+  ['最大下落率・厳しい側5%',x=>fmtPct(quantile(x.dds,.05))],
+  ['最高値からの最大損失額・中央値',x=>fmtMoney(quantile(x.losses,.5))],
+  ['最高値からの最大損失額・厳しい側5%',x=>fmtMoney(quantile(x.losses,.95))]
+ ];
+ $('comparisonTable').querySelector('tbody').innerHTML=cmpRows.map(([label,fn])=>`<tr><td>${label}</td><td>${fn(baseline)}</td><td>${fn(changed)}</td></tr>`).join('');
+ let bands=[];for(let y=0;y<=years;y++){let vals=paths.map(p=>p[y]||p[p.length-1]);bands.push({year:y,q5:quantile(vals,.05),q25:quantile(vals,.25),q50:quantile(vals,.5),q75:quantile(vals,.75),q95:quantile(vals,.95)});}
+ const med=quantile(end,.5),q5=quantile(end,.05),q95=quantile(end,.95),real=med/Math.pow(1+infl,years),prob=end.filter(v=>v>=goal).length/end.length;
+ $('assumptionNote').textContent=assumptionsText(active,scenario);
+ $('resultsIntro').textContent=`${n.toLocaleString()}経路・${years}年・共通過去期間 ${simRows[0].date}〜${simRows[simRows.length-1].date}（${simRows.length}か月）。連続${blockMonths}か月ブロックの再標本化と仮定リターンの調整による試算であり、予測確率ではありません。${active.some(a=>a.s==='2869')?`2869は上場前${synthetic2869Months}か月にQQQ日次2倍・仮定コスト0.75%の近似を使用（実績ではありません）。`:''}${crash?`第${cy}年${secondCrash&&secondYear!==cy?'・第'+secondYear+'年':''}に${shockMonths}か月間の暴落（株式 ${eqShock*100}%、債券 ${bondShock*100}%、${shockMode==='replace'?'通常変動の置き換え':'通常変動への上乗せ'}）を全経路に適用。`:'追加暴落ショックなし。'}通常は売却せず保有し、${plan.length?plan.map(e=>'第'+e.year+'年初').join('・')+'にのみ一括配分変更'+(lockDC?'（DC残高は固定）':'')+'。':'配分変更なし。'}`;
+ const cards=[['期間終了時の中央値',fmtMoney(med),'名目資産額'],['下位5％',fmtMoney(q5),'95％の経路がこの額以上'],['目標到達率（試算内）',fmtPct(prob),'仮定条件下で設定目標以上になる経路の割合'],['実質資産中央値',fmtMoney(real),`インフレ年率 ${infl*100}% を仮定`]];
+ $('metrics').innerHTML=cards.map(c=>`<div class="metric"><div class="label">${c[0]}</div><div class="value">${c[1]}</div><div class="sub">${c[2]}</div></div>`).join('');
+ drawFan(bands);drawDD(dds);drawCorr(active,rows);
+ const hist=metricsFor(data.returns);
+ $('historyStats').innerHTML=[
+ ['過去の年率リターン（近似値を含む）',fmtPct(hist.cagr)],['過去の年率リスク',fmtPct(hist.vol)],['過去の最大下落率',fmtPct(hist.dd)],['最悪の月',fmtPct(hist.worst)],['最長ピーク回復待ち',hist.maxRecovery+'か月'],['中央値の実質購買力',fmtMoney(real)]
+ ].map(x=>`<div class="metric"><div class="label">${x[0]}</div><div class="value" style="font-size:18px">${x[1]}</div></div>`).join('');
+ lastResult={bands,dds,end,med,q5,q95,prob,real,active,baseline,changed};
+}
+function canvasSetup(id){let c=$(id),ctx=c.getContext('2d'),w=c.width,h=c.height;ctx.clearRect(0,0,w,h);return {c,ctx,w,h};}
+function drawFan(bands){
+ const {ctx,w,h}=canvasSetup('fanChart'),L=65,R=15,T=20,B=42,plotW=w-L-R,plotH=h-T-B;
+ let vals=bands.flatMap(b=>[b.q5,b.q95]).filter(Number.isFinite);let min=Math.min(0,...vals),max=Math.max(...vals)*1.06;if(max<=min)max=min+1;
+ const x=i=>L+i/(bands.length-1)*plotW,y=v=>T+(max-v)/(max-min)*plotH;
+ ctx.strokeStyle='#e3e8f0';ctx.fillStyle='#667085';ctx.font='12px sans-serif';ctx.textAlign='right';
+ for(let i=0;i<=4;i++){let v=min+(max-min)*i/4,yy=y(v);ctx.beginPath();ctx.moveTo(L,yy);ctx.lineTo(w-R,yy);ctx.stroke();ctx.fillText((v/1e8).toFixed(1)+'億',L-8,yy+4);}
+ ctx.textAlign='center';for(let i=0;i<bands.length;i+=Math.max(1,Math.floor((bands.length-1)/5)))ctx.fillText(bands[i].year+'年',x(i),h-14);
+ function area(upper,lower,color){ctx.beginPath();bands.forEach((b,i)=>{let xx=x(i),yy=y(b[upper]);if(i===0)ctx.moveTo(xx,yy);else ctx.lineTo(xx,yy);});for(let i=bands.length-1;i>=0;i--){ctx.lineTo(x(i),y(bands[i][lower]));}ctx.closePath();ctx.fillStyle=color;ctx.fill();}
+ area('q95','q5','rgba(36,87,214,.12)');area('q75','q25','rgba(36,87,214,.22)');
+ ctx.beginPath();bands.forEach((b,i)=>{if(i===0)ctx.moveTo(x(i),y(b.q50));else ctx.lineTo(x(i),y(b.q50));});ctx.strokeStyle='#2457d6';ctx.lineWidth=3;ctx.stroke();
+}
+function drawDD(dds){
+ const {ctx,w,h}=canvasSetup('ddChart'),L=55,R=15,T=15,B=35,pw=w-L-R,ph=h-T-B;
+ const bins=18,counts=Array(bins).fill(0);for(const d of dds){let i=Math.min(bins-1,Math.floor(Math.max(0,-d)*bins));counts[i]++;}
+ const max=Math.max(...counts,1),bw=pw/bins;
+ ctx.strokeStyle='#e3e8f0';ctx.fillStyle='#667085';ctx.font='11px sans-serif';ctx.textAlign='right';
+ for(let i=0;i<=4;i++){let yy=T+ph*i/4;ctx.beginPath();ctx.moveTo(L,yy);ctx.lineTo(w-R,yy);ctx.stroke();ctx.fillText(Math.round(max*(1-i/4)),L-6,yy+4);}
+ counts.forEach((c,i)=>{let bh=c/max*ph;ctx.fillStyle='#d97706';ctx.fillRect(L+i*bw+1,T+ph-bh,bw-2,bh);});
+ ctx.textAlign='center';for(let i=0;i<=4;i++){let pct=i*25;ctx.fillText('-'+pct+'%',L+pw*i/4,h-12);}
+}
+function drawCorr(active,rows){
+ const {ctx,w,h}=canvasSetup('corrChart'),n=active.length,L=115,T=30,cell=Math.min((w-L-15)/n,(h-T-15)/n,38);
+ ctx.font='11px sans-serif';ctx.textAlign='right';ctx.textBaseline='middle';
+ const series=active.map(a=>rows.map(r=>r[a.s]));
+ function corr(a,b){let ma=a.reduce((s,v)=>s+v,0)/a.length,mb=b.reduce((s,v)=>s+v,0)/b.length;let num=0,da=0,db=0;for(let i=0;i<a.length;i++){num+=(a[i]-ma)*(b[i]-mb);da+=(a[i]-ma)**2;db+=(b[i]-mb)**2;}return num/Math.sqrt(da*db)||0;}
+ for(let i=0;i<n;i++){
+   ctx.fillStyle='#344054';ctx.fillText(active[i].s,L-8,T+i*cell+cell/2);
+   ctx.save();ctx.translate(L+i*cell+cell/2,T-8);ctx.rotate(-Math.PI/3);ctx.textAlign='left';ctx.fillText(active[i].s,0,0);ctx.restore();
+   for(let j=0;j<n;j++){let c=corr(series[i],series[j]);ctx.fillStyle=c>=0?`rgba(36,87,214,${Math.abs(c)*.85+.08})`:`rgba(217,119,6,${Math.abs(c)*.85+.08})`;ctx.fillRect(L+j*cell,T+i*cell,cell-1,cell-1);if(cell>=25){ctx.fillStyle=Math.abs(c)>.55?'#fff':'#263247';ctx.textAlign='center';ctx.fillText(c.toFixed(1),L+j*cell+cell/2,T+i*cell+cell/2);}}
+ }
+}
+function selfTests(){
+ const out=[];
+ const test=(name,ok,details='')=>out.push({name,ok:Boolean(ok),details});
+ const close=(a,b,eps=1e-9)=>Number.isFinite(a)&&Number.isFinite(b)&&Math.abs(a-b)<=eps*Math.max(1,Math.abs(a),Math.abs(b));
+ const r1=seeded(4329),r2=seeded(4329),r3=seeded(4330);
+ const a=Array.from({length:30},()=>r1()),b=Array.from({length:30},()=>r2()),c=Array.from({length:30},()=>r3());
+ test('同じシードの乱数系列が完全一致',a.every((v,i)=>v===b[i]));
+ test('異なるシードで乱数系列が変化',a.some((v,i)=>v!==c[i]));
+ test('分位点（中央値と5%）',close(quantile([1,2,3,4,5],.5),3)&&close(quantile([0,100],.05),5));
+ const balances=[100,120,90,135,81];let peak=balances[0],dd=0,loss=0;
+ for(const v of balances.slice(1)){loss=Math.max(loss,peak-v);peak=Math.max(peak,v);dd=Math.min(dd,v/peak-1);}
+ test('最大下落率と最高値からの最大損失額',close(dd,-.4)&&close(loss,54),`DD=${fmtPct(dd)} / 損失=${loss}`);
+ const w={SPY:30,TLT:20,CASH:50},initial=1e8,h=Object.fromEntries(Object.entries(w).map(([k,v])=>[k,initial*v/100]));
+ test('初期資産の配分総額保存',close(Object.values(h).reduce((x,y)=>x+y,0),initial));
+ const monthly=100000,added=Object.values(h).reduce((x,y)=>x+y,0);for(const k of Object.keys(h))h[k]+=monthly*h[k]/added;
+ test('月次積立の資産総額保存',close(Object.values(h).reduce((x,y)=>x+y,0),initial+monthly));
+ const factor=Math.pow(.6,1/6);
+ test('6か月の非レバレッジ株式-40%ショック',close(Math.pow(factor,6),.6));
+ const levFactor=Math.max(.000001,1+2*(factor-1));
+ test('月次2倍近似の複利を明示',close(Math.pow(levFactor,6),Math.pow(1+2*(factor-1),6)),`6か月累積=${fmtPct(Math.pow(levFactor,6)-1)}（日次レバレッジの再現ではない）`);
+ const failed=out.filter(x=>!x.ok);
+ const lines=out.map(x=>`${x.ok?'✓':'✗'} ${x.name}${x.details?'：'+x.details:''}`);
+ const el=$('selfTestResult');el.className='status '+(failed.length?'error':'ok');
+ el.textContent=`${out.length-failed.length}/${out.length}件合格。\n`+lines.join('\n')+'\n注意：これは数式の自己検証であり、株価系列、為替、DC制度、税金、日次レバレッジの検証ではありません。';
+ el.style.whiteSpace='pre-wrap';
+}
+
+function auditMarketData(){
+ const summary=$('auditSummary'),tbody=$('auditTable').querySelector('tbody');
+ if(!monthlyRows.length){summary.className='status error';summary.textContent='月次データがありません。先に「実データを読み込む」を押してください。';return;}
+ const allMonths=monthlyRows.map(r=>r.date).sort(),records=[];
+ for(const a of ALL){
+  const valid=monthlyRows.filter(r=>Number.isFinite(r[a.s]));
+  if(!valid.length){records.push({s:a.s,n:0,start:'—',end:'—',missing:'—',note:'データなし'});continue;}
+  const start=valid[0].date,end=valid[valid.length-1].date;
+  const between=monthlyRows.filter(r=>r.date>=start&&r.date<=end);
+  const missing=between.length-valid.length;
+  const note=a.s==='2869' ? `推計補完 ${synthetic2869Months}か月（QQQ日次2倍近似。実商品ではない）` : (a.s.startsWith('DC')?'代理指数（DC実商品ではない）':(a.s==='CASH'?'円現金の仮定':'価格データ・調整品質未検証'));
+  records.push({s:a.s,n:valid.length,start,end,missing,note});
+ }
+ tbody.innerHTML=records.map(r=>`<tr><td>${r.s}</td><td>${r.n}</td><td>${r.start}〜${r.end}</td><td>${r.missing}</td><td>${r.note}</td></tr>`).join('');
+ const selected=ALL.filter(a=>a.on&&a.w>0);
+ const common=monthlyRows.filter(r=>selected.every(a=>Number.isFinite(r[a.s])));
+ const first=common[0]?.date||'—',last=common[common.length-1]?.date||'—';
+ const contains2008=common.some(r=>r.date.startsWith('2008-'));
+ const gaps=common.slice(1).filter((r,i)=>{const prev=common[i].date;const expected=new Date(prev+'-01T00:00:00Z');expected.setUTCMonth(expected.getUTCMonth()+1);return expected.toISOString().slice(0,7)!==r.date;}).length;
+ const bottleneck=$('auditBottleneck');
+ const coverage=selected.map(a=>({s:a.s,first:monthlyRows.find(r=>Number.isFinite(r[a.s]))?.date||'—',last:[...monthlyRows].reverse().find(r=>Number.isFinite(r[a.s]))?.date||'—',in2008:monthlyRows.filter(r=>r.date.startsWith('2008-')&&Number.isFinite(r[a.s])).length}));
+ const startConstraint=coverage.filter(x=>x.first===first).map(x=>x.s);
+ const earlier=coverage.filter(x=>x.first>first).map(x=>x.s);
+ const without=[];
+ for(const a of selected){const other=selected.filter(b=>b.s!==a.s);if(!other.length)continue;const rows=monthlyRows.filter(r=>other.every(b=>Number.isFinite(r[b.s])));if(rows.length>common.length)without.push({s:a.s,n:rows.length,first:rows[0]?.date||'—'});}
+ without.sort((a,b)=>b.n-a.n);
+ bottleneck.textContent='【2008年のデータがある選択資産】\n'+(coverage.filter(x=>x.in2008>0).map(x=>x.s+'（'+x.in2008+'か月）').join('、')||'なし')+
+ '\n【2008年のデータがない選択資産】\n'+(coverage.filter(x=>x.in2008===0).map(x=>x.s).join('、')||'なし')+
+ '\n【1銘柄だけ除外した場合の共通期間（診断のみ・配分は変更しません）】\n'+(without.slice(0,8).map(x=>x.s+'を除外 → '+x.first+'開始、'+x.n+'か月').join('\n')||'単独除外で共通期間は延びません。複数の短期銘柄が制約している可能性があります。')+
+ '\n注意：銘柄を除外した診断は投資判断の推奨ではありません。代理系列を実績と混同しないでください。';
+ const alerts=[];
+ if(!contains2008)alerts.push('2008年の同時下落は検証できません');
+ if(gaps)alerts.push(`選択資産の共通月次系列に${gaps}か所の月飛びがあります`);
+ if(selected.some(a=>a.s==='2869')&&synthetic2869Months)alerts.push('2869に日次QQQによる仮想系列が含まれます');
+ if(common.length<120)alerts.push('共通期間が10年未満です');
+ summary.className='status '+(alerts.length?'error':'ok');
+ summary.textContent=`選択資産の共通期間：${first}〜${last}（${common.length}か月）\n`+(alerts.length?'注意：'+alerts.join('／'):'機械的な欠損チェックでは重大な問題を検出しませんでした')+'\n注意：2008年を含む実価格・日次レバレッジの再現を確認したことにはなりません。';
+ summary.style.whiteSpace='pre-wrap';
+}
+$('auditBtn').addEventListener('click',auditMarketData);
+
+$('selfTestBtn').addEventListener('click',selfTests);
+$('loadBtn').addEventListener('click',loadData);$('runBtn').addEventListener('click',simulate);$('equalBtn').addEventListener('click',equalWeights);
+$('fxMode').addEventListener('change',()=>{if(rawRows.length)loadData();});
+$('templateBtn').addEventListener('click',()=>{const blob=new Blob(['Date,SPY,QQQ,TLT,IEF,GLD,1570,2869,BTCJPY\\n'],{type:'text/csv;charset=utf-8'});downloadBlob(blob,'portfolio_price_template.csv');});
+$('csvFile').addEventListener('change',async e=>{
+ const file=e.target.files[0];if(!file)return;
+ try{
+   const text=await file.text(), rows=parseCSV(text);
+   if(!rows.length||!(rows[0].Date||rows[0].date))throw new Error('CSVにはDate列が必要です。');
+   const headers=Object.keys(rows[0]).filter(h=>!['Date','date'].includes(h));
+   for(const h of headers){
+     if(!ALL.some(a=>a.s===h)){
+       const kind=/TLT|IEF|SHY|TIP|BND|AGG/i.test(h)?'bond':/GLD|GOLD|DBC/i.test(h)?'gold':'equity';
+       ALL.push({s:h,n:'追加CSVから読み込んだ資産',w:0,k:kind,on:false});
+     }
+   }
+   rawRows=rows.map(r=>{let o={Date:r.Date||r.date};for(const h of headers){const v=Number(r[h]);if(Number.isFinite(v)&&v>0)o[h]=v;}return o;});
+   fxMap.clear();isJPY=false;buildMonthly();renderAssets();$('runBtn').disabled=false;
+   setStatus(`CSVを読み込みました（${rawRows.length}行、${headers.length}系列）。列名は Date とティッカー名、値は価格系列（調整後終値推奨）にしてください。追加した資産は初期配分0％です。`,'ok');
+ }catch(err){setStatus('CSV読込失敗：'+err.message,'error');}
+});
+function downloadBlob(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();URL.revokeObjectURL(a.href);}
+</script>
+</body></html>
