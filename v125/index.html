@@ -63,6 +63,10 @@ details{border:1px solid var(--line);border-radius:10px;padding:10px 12px}summar
   html, body { min-width: 1180px; }
   main, header .inner, footer { width: 1180px; max-width: 1180px; }
 }
+/* v125 scroll fix: audit tables expand in document flow; no nested scrolling. */
+#v125Panel .table-wrap { max-height:none !important; height:auto !important; overflow:visible !important; overflow-x:visible !important; overflow-y:visible !important; }
+#v125Panel .table-wrap table { width:100%; table-layout:auto; }
+#v125Panel .table-wrap th { position:static !important; }
 /* v117: v116監査結果の内部縦スクロールを廃止し、ページ全体のスクロールに統一 */
 #v116Panel .table-wrap{max-height:none!important;overflow:visible!important;height:auto!important;}
 #v116Panel .table-wrap th{position:static;}
