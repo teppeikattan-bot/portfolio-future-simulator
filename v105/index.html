@@ -6144,7 +6144,7 @@ async function audit105(){
       for(let i=0;i<N;i++){const d=counts[i]/p-opt.theory[i],a=Math.abs(d);ae+=a;se+=d*d;mx=Math.max(mx,a);total+=counts[i];}
       if(total!==p*M)throw Error('実測採用回数の総和が不正です。');
       const record={mae:ae/N,rmse:Math.sqrt(se/N),max:mx};measurements[p].push(record);
-      detail.push([opt.name,p.toLocaleString('ja-J'),seed,record.mae.toFixed(4),record.rmse.toFixed(4),record.max.toFixed(4),total.toLocaleString('ja-J')]);
+      detail.push([opt.name,p.toLocaleString('ja-JP'),seed,record.mae.toFixed(4),record.rmse.toFixed(4),record.max.toFixed(4),total.toLocaleString('ja-JP')]);
      }
     }
     status.textContent='計算中：'+opt.name+' '+(k+1)+' / '+seedCount+'シード';
@@ -6153,7 +6153,7 @@ async function audit105(){
    const mean=(a,key)=>a.reduce((s,x)=>s+x[key],0)/a.length;
    const baseline=mean(measurements[1000],'rmse');
    for(const n of ns){const a=measurements[n],ratio=mean(a,'rmse')/baseline,ideal=Math.sqrt(1000/n);
-    summary.push([opt.name,n.toLocaleString('ja-J'),seedCount,mean(a,'mae').toFixed(4),mean(a,'rmse').toFixed(4),mean(a,'max').toFixed(4),Math.max(...a.map(x=>x.max)).toFixed(4),ratio.toFixed(3),ideal.toFixed(3),(ratio/ideal).toFixed(3)]);
+    summary.push([opt.name,n.toLocaleString('ja-JP'),seedCount,mean(a,'mae').toFixed(4),mean(a,'rmse').toFixed(4),mean(a,'max').toFixed(4),Math.max(...a.map(x=>x.max)).toFixed(4),ratio.toFixed(3),ideal.toFixed(3),(ratio/ideal).toFixed(3)]);
    }
   }
   const render=(id,arr)=>$(id).innerHTML=arr.map(r=>'<tr>'+r.map(v=>'<td>'+v+'</td>').join('')+'</tr>').join('');
