@@ -2462,7 +2462,7 @@ function auditMarketData(){
 $('auditBtn').addEventListener('click',auditMarketData);
 
 $('selfTestBtn').addEventListener('click',selfTests);
-$('loadBtn').addEventListener('click',loadData);$('proxyMode').addEventListener('change',()=>{if(rawRows.length)loadData();});$('runBtn').addEventListener('click',simulate);$('equalBtn').addEventListener('click',equalWeights);
+$('loadBtn').addEventListener('click',loadData);$('proxyMode').addEventListener('change',()=>{if(rawRows.length)loadData();});$('runBtn').addEventListener('click',()=>simulate());$('equalBtn').addEventListener('click',equalWeights);
 $('fxMode').addEventListener('change',()=>{if(rawRows.length)loadData();});
 $('templateBtn').addEventListener('click',()=>{const blob=new Blob(['Date,SPY,QQQ,TLT,IEF,GLD,1570,2869,BTCJPY\\n'],{type:'text/csv;charset=utf-8'});downloadBlob(blob,'portfolio_price_template.csv');});
 $('csvFile').addEventListener('change',async e=>{
