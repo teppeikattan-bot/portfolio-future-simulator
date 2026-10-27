@@ -10523,4 +10523,58 @@ const bad=allFxMismatch+allMismatch;status.style.background=bad?'#fff3d6':'#e8f5
 })();
 </script>
 
+
+<section id="v1711Panel" style="margin:20px auto;padding:16px;border:1px solid #cbd5e1;border-radius:12px;max-width:1100px;background:#fff;color:#172033;font:14px/1.65 system-ui,-apple-system,sans-serif">
+<h3>v171.1：為替換算135件の原因切り分け（独立・読取専用）</h3>
+<p>v171の比較方法と、本番の月次価格作成処理を別々に再現します。特に、<b>米国株価の最終取引日に利用可能な為替</b>と<b>為替データ単独の月末最終観測日</b>が異なるかを調べます。これは監査側の照合方法の検証であり、本番系列・計算・配分・乱数を変更しません。</p>
+<button id="v1711Run" type="button" style="background:#234ed5;color:#fff;border:0;border-radius:5px;padding:9px 13px;font-weight:bold">v171.1：不一致の原因を分析する</button>
+<div id="v1711Status" style="margin:10px 0;padding:8px;background:#eef2f7;border-radius:5px">未実行。円換算本番データを先に読み込んでください。</div>
+<h4>比較方法ごとの一致件数</h4><div style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr><th>資産</th><th>照合月数</th><th>v171方式の不一致</th><th>本番処理の再現による不一致</th><th>最大誤差（pt）</th></tr></thead><tbody id="v1711ByAsset"></tbody></table></div>
+<h4>為替観測日のずれ</h4><div style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr><th>項目</th><th>件数・結果</th><th>意味</th></tr></thead><tbody id="v1711Dates"></tbody></table></div>
+<h4>不一致の詳細（先頭30件）</h4><div style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr><th>資産・月</th><th>株価観測日</th><th>本番FX日</th><th>月末FX日</th><th>v171差pt</th><th>本番再現差pt</th></tr></thead><tbody id="v1711Examples"></tbody></table></div>
+<h4>原因の判定と終了条件</h4><div style="overflow:auto"><table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr><th>論点</th><th>判定</th><th>解釈</th></tr></thead><tbody id="v1711Verdict"></tbody></table></div>
+<p style="font-size:12px">注：本番ロジックの「直近為替」は、元CSVの行順で直近に観測された為替を引き継ぎます。本監査も同じ行順で再現します。為替日が株価日と異なること自体が不具合とは限りません。配当調整済み価格の仕様や実ファンドの追跡誤差は、この検査では確定できません。</p>
+</section>
+<script>
+(()=>{'use strict';
+const $=id=>document.getElementById(id),btn=$('v1711Run'),status=$('v1711Status');if(!btn)return;
+const add=(id,values)=>{const tr=document.createElement('tr');values.forEach((v,i)=>{const td=document.createElement('td');td.textContent=String(v);td.style.cssText='padding:7px;border-bottom:1px solid #e2e8f0;vertical-align:top;overflow-wrap:anywhere;'+(i===0?'font-weight:600;':'');tr.appendChild(td)});$(id).appendChild(tr)};
+const prev=m=>{const d=new Date(m+'-01T00:00:00Z');d.setUTCMonth(d.getUTCMonth()-1);return d.toISOString().slice(0,7)};
+const pt=x=>Number.isFinite(x)?(x*100).toFixed(5):'—';
+btn.addEventListener('click',()=>{
+for(const id of ['v1711ByAsset','v1711Dates','v1711Examples','v1711Verdict'])$(id).replaceChildren();
+try{
+if(typeof isJPY==='undefined'||!isJPY||typeof rawRows==='undefined'||!rawRows.length||typeof monthlyRows==='undefined'||!monthlyRows.length||typeof fxMap==='undefined'||!(fxMap instanceof Map)||!fxMap.size)throw Error('本番の円換算実データを先に読み込んでください。');
+// 本番 buildMonthly() の rawRows 走査順、同日為替・直近為替の引継ぎを再現。
+const rawMonth=new Map(),fxMonth=new Map();let lastFx=NaN,lastFxDate='';
+for(const [d,v] of [...fxMap.entries()].sort((a,b)=>String(a[0]).localeCompare(String(b[0]))))if(Number.isFinite(Number(v))&&Number(v)>0)fxMonth.set(String(d).slice(0,7),{d:String(d),v:Number(v)});
+for(const r of rawRows){const d=String(r.Date||r.date||'').slice(0,10);if(!/^\d{4}-\d{2}-\d{2}$/.test(d))continue;const f=Number(fxMap.get(d));if(Number.isFinite(f)&&f>0){lastFx=f;lastFxDate=d}rawMonth.set(d.slice(0,7),{d,r,fx:lastFx,fxDate:lastFxDate});}
+const months=monthlyRows.filter(r=>r.date>='2008-04'&&r.date<='2026-07');const keys=['SPY','QQQ','TLT'];let totalOld=0,totalNew=0,total=0,shiftMonths=new Set(),differentDate=0,sameDate=0,examples=0,maxResidual=0,missing=0;
+for(const key of keys){let checked=0,oldBad=0,newBad=0,maxErr=0;
+for(const row of months){const m=row.date,p=prev(m),a=rawMonth.get(p),b=rawMonth.get(m),f0=fxMonth.get(p),f1=fxMonth.get(m),actual=Number(row[key]);if(!a||!b||!f0||!f1||!(Number(a.r[key])>0&&Number(b.r[key])>0&&a.fx>0&&b.fx>0&&Number.isFinite(actual))){missing++;continue}
+const oldExpected=Number(b.r[key])*f1.v/(Number(a.r[key])*f0.v)-1;
+const newExpected=Number(b.r[key])*b.fx/(Number(a.r[key])*a.fx)-1;
+const oldErr=actual-oldExpected,newErr=actual-newExpected;checked++;total++;maxErr=Math.max(maxErr,Math.abs(newErr));maxResidual=Math.max(maxResidual,Math.abs(newErr));
+if(Math.abs(oldErr)>1e-6){oldBad++;totalOld++;if(examples<30){add('v1711Examples',[key+' '+m,a.d+' → '+b.d,a.fxDate+' → '+b.fxDate,f0.d+' → '+f1.d,pt(oldErr),pt(newErr)]);examples++}}
+if(Math.abs(newErr)>1e-6){newBad++;totalNew++}
+if(b.fxDate!==f1.d||a.fxDate!==f0.d){differentDate++;shiftMonths.add(m)}else sameDate++;
+}
+add('v1711ByAsset',[key,checked+'か月',oldBad+'件',newBad+'件',pt(maxErr)]);
+}
+add('v1711ByAsset',['合計（元CSVの3系列）',total+'件',totalOld+'件',totalNew+'件',pt(maxResidual)]);
+add('v1711Dates',['本番FX日と月末FX日が異なる照合','延べ '+differentDate+'件／対象 '+shiftMonths.size+'か月','株価取引日と為替最終観測日がずれる場合を含む']);
+add('v1711Dates',['同じFX日を参照する照合','延べ '+sameDate+'件','同一観測日でも不一致があれば他の原因を調べる']);
+add('v1711Dates',['検査できない月・資産の延べ件数',missing+'件','元CSV価格・FX・本番リターンのいずれかが不足']);
+add('v1711Dates',['v171の135件との比較','今回 '+totalOld+'件／前回135件','v171はSPY・QQQ・TLT以外にACWI・DCJPも含むため、合計件数を単純比較できない']);
+if(totalNew===0){add('v1711Verdict',['元CSV3系列の計算整合','本番再現方式で全件一致','v171の不一致は主に監査側のFX観測日選択の違いで説明可能。公式の価格妥当性や配当仕様を保証しない']);}
+else{add('v1711Verdict',['元CSV3系列の計算整合','本番再現でも '+totalNew+'件不一致','行順・同日FX・CSV値・月次上書き処理を追加調査する必要あり']);}
+add('v1711Verdict',['Yahoo系列（ACWI・DCJP）','今回の対象外','本番は月内最終FXを適用する別経路。v171の135件の残りは別方式で照合する必要がある']);
+add('v1711Verdict',['配当・税・ファンドとの一致','未検証','調整後終値・配当再投資・投信手数料・源泉税は別途仕様確認が必要']);
+add('v1711Verdict',['本番の変更','なし','差の原因が監査方式なら本番を修正しない。未解決があればその資産・月のみ追跡']);
+status.style.background=totalNew?'#fff3d6':'#e8f5ec';status.textContent='v171.1完了：元CSV3系列 '+total+'件、v171方式の不一致 '+totalOld+'件、本番処理を再現した不一致 '+totalNew+'件。'+(totalNew?'残存不一致を要調査。':'監査方式のFX日付差が原因と考えられます。')+' ACWI・DCJPは別経路として未判定。本番変更なし。';
+}catch(e){status.style.background='#fee2e2';status.textContent='v171.1停止：'+String(e.message||e)+'。本番変更なし。'}
+});
+})();
+</script>
+
 </body></html>
