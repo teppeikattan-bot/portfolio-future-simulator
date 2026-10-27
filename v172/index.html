@@ -2831,7 +2831,8 @@ function audit49(){
   const rows=monthlyRows.filter(r=>assets.every(a=>Number.isFinite(r[a.s])&&r[a.s]>-1));
   if(rows.length<120)throw Error('共通月が120か月未満です：'+rows.length+'か月');
   function prev(m){const d=new Date(m+'-01T00:00:00Z');d.setUTCMonth(d.getUTCMonth()-1);return d.toISOString().slice(0,7);}
-  const gaps=[];for(let i=1;i<rows.length;i++)if(prev(rows[i].date)!==rows[i-1].date)gaps.push(rows[i-1].date+'→'+rows[i].date);
+  // v172.1: month ordinal increments by one between adjacent YYYY-MM values (fixes v172 false positives).
+const gaps=[];for(let i=1;i<rows.length;i++)if(prev(rows[i].date)!==rows[i-1].date)gaps.push(rows[i-1].date+'→'+rows[i].date);
   if(gaps.length)throw Error('共通月に欠損があります：'+gaps.slice(0,4).join('、')+'（計'+gaps.length+'件）。連続ブロック抽出を停止。');
   const years=Math.max(1,Math.min(50,Number($('years').value)||20));
   const n=Math.max(1,Math.min(5000,Number($('paths').value)||1000));
@@ -5310,7 +5311,8 @@ function audit88(){
   const B=12,steps=240,npaths=100,seed=4329,startCount=rows.length-B+1;
   if(startCount<1)throw Error('12か月ブロックの候補がありません。');
   const consecutive=(a,b)=>{const d=new Date(a+'-01T00:00:00Z');d.setUTCMonth(d.getUTCMonth()+1);return d.toISOString().slice(0,7)===b;};
-  const gaps=[];for(let i=1;i<rows.length;i++)if(!consecutive(rows[i-1].date,rows[i].date))gaps.push(rows[i-1].date+'→'+rows[i].date);
+  // v172.1: month ordinal increments by one between adjacent YYYY-MM values (fixes v172 false positives).
+const gaps=[];for(let i=1;i<rows.length;i++)if(!consecutive(rows[i-1].date,rows[i].date))gaps.push(rows[i-1].date+'→'+rows[i].date);
   add('抽出元の月次連続性',gaps.length===0,`${rows.length}か月／欠損境界 ${gaps.length}件${gaps.length?'：'+gaps.slice(0,3).join('、'):''}`);
   // 本番 runPaths と同じくブロック境界で1回だけ乱数を消費する。
   function draw(s){const rand=seeded(s),out=[];for(let p=0;p<npaths;p++)for(let t=0;t<steps;t+=B){const u=rand();const start=Math.floor(u*startCount);out.push({p,t,u,start});}return out;}
@@ -7266,7 +7268,8 @@ el('f112Run').addEventListener('click',async()=>{
    const B=Number(el('blockMonths').value)||12,years=Math.min(50,Math.max(1,Number(el('years').value)||20)),steps=years*12;
    if(rows.length<60)throw Error('共通月次データが60か月未満です。');
    if(!Number.isInteger(B)||B<1||B>rows.length)throw Error('ブロック長が不正です。');
-   const gaps=[];for(let i=1;i<rows.length;i++)if(nextMonth(rows[i-1].date)!==rows[i].date)gaps.push(rows[i-1].date+'→'+rows[i].date);
+   // v172.1: month ordinal increments by one between adjacent YYYY-MM values (fixes v172 false positives).
+const gaps=[];for(let i=1;i<rows.length;i++)if(nextMonth(rows[i-1].date)!==rows[i].date)gaps.push(rows[i-1].date+'→'+rows[i].date);
    const count=rows.length-B+1,frequencies=Array(rows.length).fill(0);
    for(let s=0;s<count;s++)for(let j=0;j<B;j++)frequencies[s+j]++;
    const total=frequencies.reduce((a,b)=>a+b,0);
@@ -10579,7 +10582,7 @@ status.style.background=totalNew?'#fff3d6':'#e8f5ec';status.textContent='v171.1�
 
 
 <section id="v172Panel" style="margin:20px auto;padding:16px;border:1px solid #cbd5e1;border-radius:12px;max-width:1100px;background:#fff;color:#172033;font:14px/1.65 system-ui,-apple-system,sans-serif">
-<h3>v172：資産間相関・連続ブロック再標本化監査（独立・読取専用）</h3>
+<h3>v172.1：資産間相関・連続ブロック再標本化監査（独立・読取専用）</h3>
 <p>現在の本番選択資産と月次系列から、同一月インデックスを全資産に共通適用する再標本化を独立に実行します。元データと抽出後の相関・標準偏差・同時下落・時系列連続性を比較します。<b>本番シミュレーションは実行・変更しません。</b> 調整リターン・強制暴落・資産残高の推移は本監査の対象外です。</p>
 <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center"><label>ブロック長 <select id="v172Block"><option value="1">1か月</option><option value="6">6か月</option><option value="12" selected>12か月</option><option value="24">24か月</option></select></label><label>再標本化の月数 <select id="v172Samples"><option value="2400">2,400</option><option value="12000" selected>12,000</option><option value="24000">24,000</option></select></label><button id="v172Run" type="button" style="background:#234ed5;color:white;border:0;border-radius:5px;padding:9px 13px;font-weight:bold">v172：相関・ブートストラップ監査を実行する</button></div>
 <div id="v172Status" style="margin:10px 0;padding:8px;background:#eef2f7;border-radius:5px">未実行。先に本番の円換算実データを読み込んでください。</div>
@@ -10605,7 +10608,8 @@ const chosen=(typeof selected!=='undefined'&&Array.isArray(selected)&&selected.l
 if(chosen.length<2)throw Error('相関の監査には現行選択資産が2つ以上必要です。配分を確認してください');
 const daily=$('leverMode')?.value==='daily';const rows=monthlyRows.filter(r=>chosen.every(a=>Number.isFinite(r[a.s])&&(!daily||!['1570','2869'].includes(a.s)||dailyLeverFactors[a.s]?.has(r.date))));
 if(rows.length<60)throw Error('共通データが60か月未満です');
-const gaps=[];for(let i=1;i<rows.length;i++){const [y,m]=rows[i-1].date.split('-').map(Number);const next=y*12+m;const [y2,m2]=rows[i].date.split('-').map(Number);if(y2*12+m2!==next)gaps.push(rows[i-1].date+'→'+rows[i].date)};
+// v172.1: month ordinal increments by one between adjacent YYYY-MM values (fixes v172 false positives).
+const gaps=[];for(let i=1;i<rows.length;i++){const [y,m]=rows[i-1].date.split('-').map(Number);const next=y*12+m+1;const [y2,m2]=rows[i].date.split('-').map(Number);if(y2*12+m2!==next)gaps.push(rows[i-1].date+'→'+rows[i].date)};
 if(gaps.length)throw Error('共通月次系列に欠損月があります：'+gaps.slice(0,3).join('、'));
 const len=Number($('v172Block').value),n=Number($('v172Samples').value),starts=rows.length-len+1;if(starts<=0)throw Error('ブロック長が元データより長い');
 const sym=chosen.map(a=>a.s),base=Object.fromEntries(sym.map(s=>[s,rows.map(r=>daily&&['1570','2869'].includes(s)?dailyLeverFactors[s].get(r.date):r[s])]));
@@ -10622,8 +10626,8 @@ add('v172Verdict',['相関の最大差',fmt(maxCorr,4)+'（全 '+checkedPairs+'�
 add('v172Verdict',['月次標準偏差の最大差',fmt(maxVol*100,3)+'ポイント']);
 add('v172Verdict',['独立再現の限界','本番の抽出器と同じブロック開始ルールを別実装で確認。実際の本番生成経路を直接照合したわけではない']);
 add('v172Verdict',['未検証','本番のリターン調整・強制暴落・経路別資産推移・配当仕様・将来の尾部依存']);
-status.style.background=valid&&continuity?'#e9f8ee':'#fff0e9';status.textContent='v172監査完了：共通'+rows.length+'か月、'+sym.length+'資産、'+checkedPairs+'相関ペア。ブロック内連続性 '+(continuity?'正常':'異常')+'。相関の最大差 '+fmt(maxCorr,4)+'、標準偏差の最大差 '+fmt(maxVol*100,3)+'pt。相関差は有限標本・開始窓の重みでも発生するため自動合格判定はしません。本番変更なし。';
-}catch(e){status.style.background='#fee2e2';status.textContent='v172監査失敗：'+(e?.message||String(e))}});
+status.style.background=valid&&continuity?'#e9f8ee':'#fff0e9';status.textContent='v172.1監査完了：共通'+rows.length+'か月、'+sym.length+'資産、'+checkedPairs+'相関ペア。ブロック内連続性 '+(continuity?'正常':'異常')+'。相関の最大差 '+fmt(maxCorr,4)+'、標準偏差の最大差 '+fmt(maxVol*100,3)+'pt。相関差は有限標本・開始窓の重みでも発生するため自動合格判定はしません。本番変更なし。';
+}catch(e){status.style.background='#fee2e2';status.textContent='v172.1監査失敗：'+(e?.message||String(e))}});
 })();
 </script>
 
